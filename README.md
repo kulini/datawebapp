@@ -1,8 +1,10 @@
-# sd-tools is a repository for my Software Development Tools project for the TripleTen Data Science program.
-https://sd-tools.onrender.com 
-# receiving following issue on render dashboard "Deploy failed for 523058d: File additions for project.
-Exited with status 1 while building your code. Check your deploy logs for more information.
-December 10, 2024 at 3:21 PM" unsure how to resolve.
-# details the price distrubtion based on the condition of the car and the odometer
-# also details the odometer vs the model year
-# looks at details of 4wd vehicles and their odometer readings and the car info
+# SDtoolsProject
+
+## This project will detail the skills and knowledge acquired from completing the Software Development tools course
+## I will develop and deploy a web application to a cloud service that will be accessible to the public
+## In this project I will be working on car sales advertisemnts.
+
+## To access the included app.py navigate to file location and open with Python3. 
+
+#### The project URL  
+https://sdtoolsproject.onrender.com

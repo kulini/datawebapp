@@ -1,27 +1,56 @@
 import pandas as pd
+import matplotlib.pyplot as plt
 import streamlit as st
+import altair as alt
 import plotly.express as px
+import seaborn as sns
 
-df = pd.read_csv('vehicles_us.csv')
+data = pd.read_csv('./vehicles_us.csv')
 
-st.header("Exploratory Data Analysis: Vehicle Data")
+data.info()
 
-st.write(df.head())
+data.duplicated().sum()
 
-fig = px.histogram(df, x='price', color='condition', nbins=50, title="Price Distribution by Condition")
-st.plotly_chart(fig)
+data['is_4wd']= data['is_4wd'].fillna(0)
+data['is_4wd'] = data['is_4wd'].astype('bool') 
+data['manufacturer']=data['model'].str.split().str[0]
+data['paint_color']=data['paint_color'].fillna('unknown')
+data['model_year'] = data['model_year'].fillna(data.groupby(['model'])['model_year'].transform('median')) 
+data['odometer'] = data['odometer'].fillna(data.groupby(['model_year'])['odometer'].transform('median')) 
+data['cylinders'] = data['cylinders'].fillna(data.groupby(['model'])['cylinders'].transform('median'))
 
-fig = px.histogram(df, x='odometer', color='is_4wd', nbins=50, title="Odometer Distribution by 4WD")
-st.plotly_chart(fig)
+### The goal here is to see how long are cars listed before they are sold
 
-fig = px.scatter(df, x='odometer', y='price', title='Price vs Odometer') 
-st.plotly_chart(fig)
+data['days_listed'].describe()
 
-fig = px.scatter(df, x='model_year', y='odometer', title="Odometer vs Model Year")
-st.plotly_chart(fig)
+### It looks like most vehicles are sold around roughly 40 days!To sell cars faster the client should look to adjusting prices after the 45 day mark if vehicles have not sold.
 
-is_4wd = st.checkbox("Show only 4WD vehicles")
-if is_4wd:
-    df = df[df['is_4wd'] == 1]
-st.write(df.head())
+# histogram of days listed
+g = sns.FacetGrid(data, col="condition", col_wrap=3, sharex=True, sharey=True)
+g.map(plt.hist, "days_listed", bins=[20, 40, 60, 80, 100, 120, 140, 160, 180, 200], alpha=0.7)
+g.set_axis_labels("Days Listed", "Frequency")
+g.fig.suptitle("Days Listed by Vehicle Condition", y=1.02)
+plt.show()
 
+# Group by 'category' and create histograms for 'value'
+data.groupby('condition')['days_listed'].hist(bins=[20,40,60,80,100,120,140,160,180,200],alpha=0.7, legend=True)
+plt.show()
+
+### It also appears that there is a steep decline in excellent condition vehicles as time passes. 
+
+fig = px.scatter(
+    data,
+    x='price',
+    y='days_listed',
+    color='condition',
+    size='price',  # Size the markers by price
+    hover_data=['condition'],
+    title='Scatterplot: Price vs Days Listed by Condition'
+)
+fig.update_layout(
+    xaxis_title='Price ($)',
+    yaxis_title='Days Listed'
+)
+fig.show()
+
+## Based on the above it also appears that cheaper vehicles sell faster and more expensive vehicles still sell in about 40 days regardless of condiiton
