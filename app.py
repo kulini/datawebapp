@@ -1,56 +1,53 @@
 import pandas as pd
-import matplotlib.pyplot as plt
+import scipy.stats
 import streamlit as st
-import altair as alt
-import plotly.express as px
-import seaborn as sns
+import time
 
-data = pd.read_csv('./vehicles_us.csv')
+# these are stateful variables which are preserved as Streamlit reruns this script
+if 'experiment_no' not in st.session_state:
+    st.session_state['experiment_no'] = 0
 
-data.info()
+if 'df_experiment_results' not in st.session_state:
+    st.session_state['df_experiment_results'] = pd.DataFrame(columns=['no', 'iterations', 'mean'])
 
-data.duplicated().sum()
+st.header('Tossing a Coin')
 
-data['is_4wd']= data['is_4wd'].fillna(0)
-data['is_4wd'] = data['is_4wd'].astype('bool') 
-data['manufacturer']=data['model'].str.split().str[0]
-data['paint_color']=data['paint_color'].fillna('unknown')
-data['model_year'] = data['model_year'].fillna(data.groupby(['model'])['model_year'].transform('median')) 
-data['odometer'] = data['odometer'].fillna(data.groupby(['model_year'])['odometer'].transform('median')) 
-data['cylinders'] = data['cylinders'].fillna(data.groupby(['model'])['cylinders'].transform('median'))
+chart = st.line_chart([0.5])
 
-### The goal here is to see how long are cars listed before they are sold
+def toss_coin(n):
 
-data['days_listed'].describe()
+    trial_outcomes = scipy.stats.bernoulli.rvs(p=0.5, size=n)
 
-### It looks like most vehicles are sold around roughly 40 days!To sell cars faster the client should look to adjusting prices after the 45 day mark if vehicles have not sold.
+    mean = None
+    outcome_no = 0
+    outcome_1_count = 0
 
-# histogram of days listed
-g = sns.FacetGrid(data, col="condition", col_wrap=3, sharex=True, sharey=True)
-g.map(plt.hist, "days_listed", bins=[20, 40, 60, 80, 100, 120, 140, 160, 180, 200], alpha=0.7)
-g.set_axis_labels("Days Listed", "Frequency")
-g.fig.suptitle("Days Listed by Vehicle Condition", y=1.02)
-plt.show()
+    for r in trial_outcomes:
+        outcome_no +=1
+        if r == 1:
+            outcome_1_count += 1
+        mean = outcome_1_count / outcome_no
+        chart.add_rows([mean])
+        time.sleep(0.05)
 
-# Group by 'category' and create histograms for 'value'
-data.groupby('condition')['days_listed'].hist(bins=[20,40,60,80,100,120,140,160,180,200],alpha=0.7, legend=True)
-plt.show()
+    return mean
 
-### It also appears that there is a steep decline in excellent condition vehicles as time passes. 
+number_of_trials = st.slider('Number of trials?', 1, 1000, 10)
+start_button = st.button('Run')
 
-fig = px.scatter(
-    data,
-    x='price',
-    y='days_listed',
-    color='condition',
-    size='price',  # Size the markers by price
-    hover_data=['condition'],
-    title='Scatterplot: Price vs Days Listed by Condition'
-)
-fig.update_layout(
-    xaxis_title='Price ($)',
-    yaxis_title='Days Listed'
-)
-fig.show()
+if start_button:
+    st.write(f'Running the experiment of {number_of_trials} trials.')
+    st.session_state['experiment_no'] += 1
+    mean = toss_coin(number_of_trials)
+    st.session_state['df_experiment_results'] = pd.concat([
+        st.session_state['df_experiment_results'],
+        pd.DataFrame(data=[[st.session_state['experiment_no'],
+                            number_of_trials,
+                            mean]],
+                     columns=['no', 'iterations', 'mean'])
+        ],
+        axis=0)
+    st.session_state['df_experiment_results'] = \
+        st.session_state['df_experiment_results'].reset_index(drop=True)
 
-## Based on the above it also appears that cheaper vehicles sell faster and more expensive vehicles still sell in about 40 days regardless of condiiton
+st.write(st.session_state['df_experiment_results'])
